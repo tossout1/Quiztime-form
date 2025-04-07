@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Your Form</title>
+    <style>
+        .question-container {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+        #formPreview {
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            display: none;
+        }
+        .preview-question {
+            margin-bottom: 10px;
+        }
+        .preview-question label {
+            font-weight: bold;
+        }
+        .delete-btn {
+            margin-top: 10px;
+            background-color: red;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+        .delete-btn:hover {
+            background-color: darkred;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Create Your Form</h1>
+
+<!-- Form creation section -->
+<form id="formCreator">
+    <label for="email">Your Email:</label><br>
+    <input type="email" id="email" name="email" required><br><br>
+
+    <label for="formTitle">Form Title:</label><br>
+    <input type="text" id="formTitle" name="formTitle" required><br><br>
+
+    <label for="formCaption">Form Caption:</label><br>
+    <input type="text" id="formCaption" name="formCaption" required><br><br>
+
+    <div id="questions"></div>
+
+    <button type="button" id="addQuestion">Add Question</button><br><br>
+
+    <button type="submit" id="doneButton">Done</button>
+    <button type="button" id="previewButton">Preview Form</button>
+</form>
+
+<div id="previewSection">
+    <div id="formPreview">
+        <h3>Form Preview</h3>
+        <div id="previewContent"></div>
+    </div>
+</div>
+
+<script>
+    let questionIndex = 0;
+
+    // Function to add a new question input field
+    document.getElementById('addQuestion').addEventListener('click', function() {
+        const questionContainer = document.createElement('div');
+        questionContainer.classList.add('question-container');
+        questionContainer.setAttribute('id', 'question-' + questionIndex);
+
+        questionContainer.innerHTML = `
+            <label for="question${questionIndex}">Question ${questionIndex + 1}:</label><br>
+            <input type="text" id="question${questionIndex}" name="question" required><br><br>
+
+            <label for="answer${questionIndex}">Correct Answer:</label><br>
+            <input type="text" id="answer${questionIndex}" name="correctAnswer" required><br><br>
+
+            <label for="options${questionIndex}">Options (comma separated):</label><br>
+            <input type="text" id="options${questionIndex}" name="options" required><br><br>
+
+            <button type="button" class="delete-btn" onclick="deleteQuestion(${questionIndex})">Delete Question</button>
+        `;
+        
+        document.getElementById('questions').appendChild(questionContainer);
+        questionIndex++;
+    });
+
+    // Function to delete a question
+    function deleteQuestion(index) {
+        const questionContainer = document.getElementById('question-' + index);
+        questionContainer.remove();
+    }
+
+    // Handle form submission
+    document.getElementById('formCreator').addEventListener('submit', function(event) {
+        event.preventDefault(); // Prevent form submission
+
+        // Validate email
+        const email = document.getElementById('email').value;
+        if (!validateEmail(email)) {
+            alert("Please enter a valid email.");
+            return;
+        }
+
+        // Collect form data
+        let formData = {
+            email: email,
+            formTitle: document.getElementById('formTitle').value,
+            formCaption: document.getElementById('formCaption').value,
+            questions: []
+        };
+
+        // Collect questions and options
+        for (let i = 0; i < questionIndex; i++) {
+            const questionText = document.getElementById(`question${i}`).value;
+            const correctAnswer = document.getElementById(`answer${i}`).value;
+            const options = document.getElementById(`options${i}`).value.split(',');
+
+            formData.questions.push({
+                questionText: questionText,
+                correctAnswer: correctAnswer,
+                options: options
+            });
+        }
+
+        // Send data to the backend
+        fetch('/save-form', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Form saved successfully!');
+            } else {
+                alert('Something went wrong, please try again.');
+            }
+        });
+    });
+
+    // Function to validate email format
+    function validateEmail(email) {
+        const re = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        return re.test(String(email).toLowerCase());
+    }
+
+    // Function to preview the form before submission
+    document.getElementById('previewButton').addEventListener('click', function() {
+        const formTitle = document.getElementById('formTitle').value;
+        const formCaption = document.getElementById('formCaption').value;
+
+        // Create preview content
+        let previewContent = `<h1>${formTitle}</h1><p>${formCaption}</p>`;
+
+        for (let i = 0; i < questionIndex; i++) {
+            const questionText = document.getElementById(`question${i}`).value;
+            const options = document.getElementById(`options${i}`).value.split(',');
+
+            previewContent += `
+                <div class="preview-question">
+                    <label>${questionText}</label><br>
+                    ${options.map(opt => `<input type="radio" name="q${i}" value="${opt}"> ${opt}`).join('<br>')}
+                </div>
+            `;
+        }
+
+        // Show the preview
+        document.getElementById('previewContent').innerHTML = previewContent;
+        document.getElementById('formPreview').style.display = 'block';
+    });
+</script>
+
+</body>
+</html>
